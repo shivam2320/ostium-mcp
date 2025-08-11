@@ -20,18 +20,20 @@
   "author": "Shivam <alekarshivam23@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@osiris-ai/sdk": "latest",
     "@modelcontextprotocol/sdk": "latest",
-    "dotenv": "latest",
-    "zod": "latest",
     "@noble/curves": "latest",
-    "@osiris-ai/postgres-sdk": "latest"
+    "@osiris-ai/postgres-sdk": "latest",
+    "@osiris-ai/sdk": "latest",
+    "@osiris-ai/web3-evm-sdk": "^0.1.1",
+    "dotenv": "latest",
+    "viem": "^2.33.3",
+    "zod": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
-    "tsx": "latest",
+    "@types/pg": "latest",
     "nodemon": "latest",
-    "typescript": "latest",
-    "@types/pg": "latest"
+    "tsx": "latest",
+    "typescript": "latest"
   }
 }
