@@ -1,0 +1,14 @@
+{
+  "name": "ostium-mcp",
+  "id": "ostium-mcp",
+  "description": "ostium-mcp MCP Server",
+  "hubUrl": "https://api.osirislabs.xyz/v1",
+  "packageId": "20e4b045-d900-4106-baae-05d97c8699f3",
+  "serviceClients": [],
+  "baseUrl": "http://localhost:3000",
+  "user": {
+    "name": "Shivam",
+    "email": "alekarshivam23@gmail.com",
+    "role": "publisher"
+  }
+}
