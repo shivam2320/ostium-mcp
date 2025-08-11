@@ -28,7 +28,17 @@ import { TRADING_ABI } from "./utils/ABIs/trading_abi.js";
 import { TRADING_CONTRACT_ADDRESS } from "./utils/constants.js";
 import { z } from "zod";
 import { registerOpenTradeTools } from "./tools/open-trade.js";
-import { OpenTradeParams } from "./schema/index.js";
+import { registerCloseTradeTools } from "./tools/close-trade.js";
+import { registerUpdateTpTools } from "./tools/update-tp.js";
+import { registerUpdateSlTools } from "./tools/update-sl.js";
+import { registerModifyTradeTools } from "./tools/modify-trade.js";
+import {
+  OpenTradeParams,
+  CloseTradeParams,
+  UpdateTpParams,
+  UpdateSlParams,
+  ModifyTradeParams,
+} from "./schema/index.js";
 
 export class OstiumMCP {
   private hubBaseUrl: string;
@@ -297,7 +307,7 @@ export class OstiumMCP {
       });
 
       const tradeArray = [
-        parseUnits(_trade.collateral, 18),
+        parseUnits(_trade.collateral, 6),
         parseUnits(_trade.openPrice, 18),
         parseUnits(_trade.tp, 18),
         parseUnits(_trade.sl, 18),
@@ -340,11 +350,315 @@ export class OstiumMCP {
     }
   }
 
+  async closeTrade(params: CloseTradeParams): Promise<CallToolResult> {
+    try {
+      const { token, context } = getAuthContext("osiris");
+      if (!token || !context) {
+        throw new Error("No token or context found");
+      }
+
+      const wallet = this.walletToSession[context.sessionId];
+      if (!wallet) {
+        const error = new Error(
+          "No wallet found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoWalletFoundError";
+        return createErrorResponse(error);
+      }
+
+      const client = new EVMWalletClient(
+        this.hubBaseUrl,
+        token.access_token,
+        context.deploymentId
+      );
+
+      const account = await client.getViemAccount(wallet, this.chain);
+      if (!account) {
+        const error = new Error(
+          "No account found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoAccountFoundError";
+        return createErrorResponse(error);
+      }
+
+      const { _pairIndex, _index, _amount } = params;
+
+      const walletClient = createWalletClient({
+        account: account,
+        chain: mainnet,
+        transport: http(),
+      });
+
+      const preparedTx = await walletClient.prepareTransactionRequest({
+        to: TRADING_CONTRACT_ADDRESS,
+        abi: TRADING_ABI,
+        functionName: "closeTradeMarket",
+        args: [
+          Number(_pairIndex),
+          Number(_index ?? "0"),
+          parseUnits(_amount, 6),
+        ],
+        gas: 800000n,
+      });
+
+      const serializedTx = serializeTransaction(preparedTx as any);
+      const signedTx = await client.signTransaction(
+        TRADING_ABI,
+        serializedTx,
+        this.chain,
+        account.address
+      );
+      const hash = await walletClient.sendRawTransaction({
+        serializedTransaction: signedTx as `0x${string}`,
+      });
+      return createSuccessResponse("Successfully closed trade", {
+        hash: hash,
+        pairIndex: _pairIndex,
+        index: _index,
+        amount: _amount,
+      });
+    } catch (error: any) {
+      if (error.response && error.response.data && error.response.data.error) {
+        return createErrorResponse(error.response.data.error);
+      }
+      throw new Error(`Close trade failed: ${error}`);
+    }
+  }
+
+  async updateTp(params: UpdateTpParams): Promise<CallToolResult> {
+    try {
+      const { token, context } = getAuthContext("osiris");
+      if (!token || !context) {
+        throw new Error("No token or context found");
+      }
+
+      const wallet = this.walletToSession[context.sessionId];
+      if (!wallet) {
+        const error = new Error(
+          "No wallet found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoWalletFoundError";
+        return createErrorResponse(error);
+      }
+
+      const client = new EVMWalletClient(
+        this.hubBaseUrl,
+        token.access_token,
+        context.deploymentId
+      );
+
+      const account = await client.getViemAccount(wallet, this.chain);
+      if (!account) {
+        const error = new Error(
+          "No account found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoAccountFoundError";
+        return createErrorResponse(error);
+      }
+
+      const { _pairIndex, _index, _newTP } = params;
+
+      const walletClient = createWalletClient({
+        account: account,
+        chain: mainnet,
+        transport: http(),
+      });
+
+      const preparedTx = await walletClient.prepareTransactionRequest({
+        to: TRADING_CONTRACT_ADDRESS,
+        abi: TRADING_ABI,
+        functionName: "updateTp",
+        args: [
+          Number(_pairIndex),
+          Number(_index ?? "0"),
+          parseUnits(_newTP, 18),
+        ],
+        gas: 800000n,
+      });
+
+      const serializedTx = serializeTransaction(preparedTx as any);
+      const signedTx = await client.signTransaction(
+        TRADING_ABI,
+        serializedTx,
+        this.chain,
+        account.address
+      );
+      const hash = await walletClient.sendRawTransaction({
+        serializedTransaction: signedTx as `0x${string}`,
+      });
+      return createSuccessResponse("Successfully updated TP", {
+        hash: hash,
+        pairIndex: _pairIndex,
+        index: _index,
+        newTP: _newTP,
+      });
+    } catch (error: any) {
+      if (error.response && error.response.data && error.response.data.error) {
+        return createErrorResponse(error.response.data.error);
+      }
+      throw new Error(`Update TP failed: ${error}`);
+    }
+  }
+
+  async updateSl(params: UpdateSlParams): Promise<CallToolResult> {
+    try {
+      const { token, context } = getAuthContext("osiris");
+      if (!token || !context) {
+        throw new Error("No token or context found");
+      }
+
+      const wallet = this.walletToSession[context.sessionId];
+      if (!wallet) {
+        const error = new Error(
+          "No wallet found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoWalletFoundError";
+        return createErrorResponse(error);
+      }
+
+      const client = new EVMWalletClient(
+        this.hubBaseUrl,
+        token.access_token,
+        context.deploymentId
+      );
+
+      const account = await client.getViemAccount(wallet, this.chain);
+      if (!account) {
+        const error = new Error(
+          "No account found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoAccountFoundError";
+        return createErrorResponse(error);
+      }
+
+      const { _pairIndex, _index, _newSL } = params;
+
+      const walletClient = createWalletClient({
+        account: account,
+        chain: mainnet,
+        transport: http(),
+      });
+
+      const preparedTx = await walletClient.prepareTransactionRequest({
+        to: TRADING_CONTRACT_ADDRESS,
+        abi: TRADING_ABI,
+        functionName: "updateSl",
+        args: [
+          Number(_pairIndex),
+          Number(_index ?? "0"),
+          parseUnits(_newSL, 18),
+        ],
+        gas: 800000n,
+      });
+
+      const serializedTx = serializeTransaction(preparedTx as any);
+      const signedTx = await client.signTransaction(
+        TRADING_ABI,
+        serializedTx,
+        this.chain,
+        account.address
+      );
+      const hash = await walletClient.sendRawTransaction({
+        serializedTransaction: signedTx as `0x${string}`,
+      });
+      return createSuccessResponse("Successfully updated SL", {
+        hash: hash,
+        pairIndex: _pairIndex,
+        index: _index,
+        newSL: _newSL,
+      });
+    } catch (error: any) {
+      if (error.response && error.response.data && error.response.data.error) {
+        return createErrorResponse(error.response.data.error);
+      }
+      throw new Error(`Update SL failed: ${error}`);
+    }
+  }
+
+  async modifyTrade(params: ModifyTradeParams): Promise<CallToolResult> {
+    try {
+      const { token, context } = getAuthContext("osiris");
+      if (!token || !context) {
+        throw new Error("No token or context found");
+      }
+
+      const wallet = this.walletToSession[context.sessionId];
+      if (!wallet) {
+        const error = new Error(
+          "No wallet found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoWalletFoundError";
+        return createErrorResponse(error);
+      }
+
+      const client = new EVMWalletClient(
+        this.hubBaseUrl,
+        token.access_token,
+        context.deploymentId
+      );
+
+      const account = await client.getViemAccount(wallet, this.chain);
+      if (!account) {
+        const error = new Error(
+          "No account found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoAccountFoundError";
+        return createErrorResponse(error);
+      }
+
+      const { _pairIndex, _index, _amount } = params;
+
+      const walletClient = createWalletClient({
+        account: account,
+        chain: mainnet,
+        transport: http(),
+      });
+
+      const preparedTx = await walletClient.prepareTransactionRequest({
+        to: TRADING_CONTRACT_ADDRESS,
+        abi: TRADING_ABI,
+        functionName: "topUpCollateral",
+        args: [
+          Number(_pairIndex),
+          Number(_index ?? "0"),
+          parseUnits(_amount, 6),
+        ],
+        gas: 800000n,
+      });
+
+      const serializedTx = serializeTransaction(preparedTx as any);
+      const signedTx = await client.signTransaction(
+        TRADING_ABI,
+        serializedTx,
+        this.chain,
+        account.address
+      );
+      const hash = await walletClient.sendRawTransaction({
+        serializedTransaction: signedTx as `0x${string}`,
+      });
+      return createSuccessResponse("Successfully modified trade", {
+        hash: hash,
+        pairIndex: _pairIndex,
+        index: _index,
+        amount: _amount,
+      });
+    } catch (error: any) {
+      if (error.response && error.response.data && error.response.data.error) {
+        return createErrorResponse(error.response.data.error);
+      }
+      throw new Error(`Modify trade failed: ${error}`);
+    }
+  }
+
   configureServer(server: McpServer): void {
     registerHelloTool(server);
     registerHelloPrompt(server);
     registerHelloResource(server);
     registerOpenTradeTools(server, this);
+    registerCloseTradeTools(server, this);
+    registerUpdateTpTools(server, this);
+    registerUpdateSlTools(server, this);
+    registerModifyTradeTools(server, this);
     server.tool(
       "getUserAddresses",
       "Get user addresses, you can choose a wallet with chooseWallet",
