@@ -24,8 +24,11 @@ import {
   TokenInfo,
 } from "./utils/types.js";
 import { ERC20_ABI } from "./utils/ABIs/ERC20_ABI.js";
+import { TRADING_ABI } from "./utils/ABIs/trading_abi.js";
 import { TRADING_CONTRACT_ADDRESS } from "./utils/constants.js";
 import { z } from "zod";
+import { registerOpenTradeTools } from "./tools/open-trade.js";
+import { OpenTradeParams } from "./schema/index.js";
 
 export class OstiumMCP {
   private hubBaseUrl: string;
@@ -243,10 +246,105 @@ export class OstiumMCP {
     }
   }
 
+  async openTrade(params: OpenTradeParams): Promise<CallToolResult> {
+    try {
+      const { token, context } = getAuthContext("osiris");
+      if (!token || !context) {
+        throw new Error("No token or context found");
+      }
+      console.log(
+        JSON.stringify(
+          {
+            hubBaseUrl: this.hubBaseUrl,
+            accessToken: token.access_token,
+            deploymentId: context.deploymentId,
+          },
+          null,
+          2
+        )
+      );
+
+      const wallet = this.walletToSession[context.sessionId];
+      if (!wallet) {
+        const error = new Error(
+          "No wallet found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoWalletFoundError";
+        return createErrorResponse(error);
+      }
+
+      const client = new EVMWalletClient(
+        this.hubBaseUrl,
+        token.access_token,
+        context.deploymentId
+      );
+
+      const account = await client.getViemAccount(wallet, this.chain);
+      if (!account) {
+        const error = new Error(
+          "No account found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoAccountFoundError";
+        return createErrorResponse(error);
+      }
+
+      const { _trade, _type, _slippage } = params;
+
+      const walletClient = createWalletClient({
+        account: account,
+        chain: mainnet,
+        transport: http(),
+      });
+
+      const tradeArray = [
+        parseUnits(_trade.collateral, 18),
+        parseUnits(_trade.openPrice, 18),
+        parseUnits(_trade.tp, 18),
+        parseUnits(_trade.sl, 18),
+        _trade.trader as `0x${string}`,
+        Math.round(Number(_trade.leverage) * 100),
+        Number(_trade.pairIndex),
+        Number(_trade.index ?? "0"),
+        _trade.buy ?? true,
+      ];
+
+      const preparedTx = await walletClient.prepareTransactionRequest({
+        to: TRADING_CONTRACT_ADDRESS,
+        abi: TRADING_ABI,
+        functionName: "openTrade",
+        args: [tradeArray, Number(_type), BigInt(_slippage)],
+        gas: 800000n,
+      });
+
+      const serializedTx = serializeTransaction(preparedTx as any);
+      const signedTx = await client.signTransaction(
+        TRADING_ABI,
+        serializedTx,
+        this.chain,
+        account.address
+      );
+      const hash = await walletClient.sendRawTransaction({
+        serializedTransaction: signedTx as `0x${string}`,
+      });
+      return createSuccessResponse("Successfully opened trade", {
+        hash: hash,
+        trade: _trade,
+        type: _type,
+        slippage: _slippage,
+      });
+    } catch (error: any) {
+      if (error.response && error.response.data && error.response.data.error) {
+        return createErrorResponse(error.response.data.error);
+      }
+      throw new Error(`Open trade failed: ${error}`);
+    }
+  }
+
   configureServer(server: McpServer): void {
     registerHelloTool(server);
     registerHelloPrompt(server);
     registerHelloResource(server);
+    registerOpenTradeTools(server, this);
     server.tool(
       "getUserAddresses",
       "Get user addresses, you can choose a wallet with chooseWallet",
