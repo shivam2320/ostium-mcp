@@ -32,6 +32,7 @@ import { registerCloseTradeTools } from "./tools/close-trade.js";
 import { registerUpdateTpTools } from "./tools/update-tp.js";
 import { registerUpdateSlTools } from "./tools/update-sl.js";
 import { registerModifyTradeTools } from "./tools/modify-trade.js";
+import { registerDataTools } from "./tools/data.js";
 import {
   OpenTradeParams,
   CloseTradeParams,
@@ -659,6 +660,7 @@ export class OstiumMCP {
     registerUpdateTpTools(server, this);
     registerUpdateSlTools(server, this);
     registerModifyTradeTools(server, this);
+    registerDataTools(server);
     server.tool(
       "getUserAddresses",
       "Get user addresses, you can choose a wallet with chooseWallet",

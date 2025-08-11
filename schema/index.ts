@@ -48,6 +48,31 @@ export const ModifyTradeSchema = {
   _amount: z.string(),
 };
 
+export const GetPairDetailsSchema = {
+  pairId: z.string(),
+};
+
+export const GetOpenTradesSchema = {
+  address: z.string(),
+};
+
+export const GetLimitOrdersSchema = {
+  address: z.string(),
+};
+
+export const GetRecentHistorySchema = {
+  address: z.string(),
+  lastNOrders: z.number().default(10),
+};
+
+export const GetOrderByIdSchema = {
+  orderId: z.string(),
+};
+
+export const GetTradeByIdSchema = {
+  tradeId: z.string(),
+};
+
 export interface OpenTradeParams {
   _trade: {
     collateral: string;
@@ -86,4 +111,29 @@ export interface ModifyTradeParams {
   _pairIndex: string;
   _index?: string;
   _amount: string;
+}
+
+export interface GetPairDetailsParams {
+  pairId: string;
+}
+
+export interface GetOpenTradesParams {
+  address: string;
+}
+
+export interface GetLimitOrdersParams {
+  address: string;
+}
+
+export interface GetRecentHistoryParams {
+  address: string;
+  lastNOrders?: number;
+}
+
+export interface GetOrderByIdParams {
+  orderId: string;
+}
+
+export interface GetTradeByIdParams {
+  tradeId: string;
 }

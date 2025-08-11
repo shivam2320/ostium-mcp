@@ -20,12 +20,15 @@
   "author": "Shivam <alekarshivam23@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@ethersproject/bignumber": "^5.8.0",
     "@modelcontextprotocol/sdk": "latest",
     "@noble/curves": "latest",
     "@osiris-ai/postgres-sdk": "latest",
     "@osiris-ai/sdk": "latest",
     "@osiris-ai/web3-evm-sdk": "^0.1.1",
     "dotenv": "latest",
+    "ethers": "^6.15.0",
+    "graphql-request": "^7.2.0",
     "pino": "^9.7.0",
     "viem": "^2.33.3",
     "zod": "latest"
