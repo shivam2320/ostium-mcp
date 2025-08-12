@@ -23,18 +23,18 @@ export function registerCloseTradeTools(
     "close_trade",
     "Close a trade",
     CloseTradeSchema,
-    async ({ _pairIndex, _index, _amount }) => {
+    async ({ _pairIndex, _index, _closePercentage }) => {
       try {
         logger.toolCalled("close_trade", {
           _pairIndex,
           _index,
-          _amount,
+          _closePercentage,
         });
 
         const result = await ostiumMCP.closeTrade({
           _pairIndex,
           _index,
-          _amount,
+          _closePercentage,
         });
 
         logger.toolCompleted("close_trade");

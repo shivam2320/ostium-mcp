@@ -25,7 +25,10 @@ import {
 } from "./utils/types.js";
 import { ERC20_ABI } from "./utils/ABIs/ERC20_ABI.js";
 import { TRADING_ABI } from "./utils/ABIs/TRADING_ABI.js";
-import { TRADING_CONTRACT_ADDRESS } from "./utils/constants.js";
+import {
+  STORAGE_CONTRACT_ADDRESS,
+  TRADING_CONTRACT_ADDRESS,
+} from "./utils/constants.js";
 import { z } from "zod";
 import { registerOpenTradeTools } from "./tools/open-trade.js";
 import { registerCloseTradeTools } from "./tools/close-trade.js";
@@ -201,7 +204,7 @@ export class OstiumMCP {
         to: tokenAddress,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [TRADING_CONTRACT_ADDRESS, amountInWei],
+        args: [STORAGE_CONTRACT_ADDRESS, amountInWei],
         gas: 800000n,
       });
       console.log(
@@ -212,7 +215,7 @@ export class OstiumMCP {
             to: tokenAddress,
             abi: ERC20_ABI,
             functionName: "approve",
-            args: [TRADING_CONTRACT_ADDRESS, amountInWei],
+            args: [STORAGE_CONTRACT_ADDRESS, amountInWei],
             gas: 8000000n,
           },
           (_, v) => (typeof v === "bigint" ? v.toString() : v),
@@ -231,7 +234,7 @@ export class OstiumMCP {
         data: encodeFunctionData({
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [TRADING_CONTRACT_ADDRESS, amountInWei],
+          args: [STORAGE_CONTRACT_ADDRESS, amountInWei],
         }),
       } as any);
 
@@ -307,27 +310,41 @@ export class OstiumMCP {
         transport: http(),
       });
 
-      const tradeArray = [
-        parseUnits(_trade.collateral, 6),
-        parseUnits(_trade.openPrice, 18),
-        parseUnits(_trade.tp, 18),
-        parseUnits(_trade.sl, 18),
-        _trade.trader as `0x${string}`,
-        Math.round(Number(_trade.leverage) * 100),
-        Number(_trade.pairIndex),
-        Number(_trade.index ?? "0"),
-        _trade.buy ?? true,
-      ];
+      const tradeArray = {
+        collateral: parseUnits(_trade.collateral, 6),
+        openPrice: parseUnits(_trade.openPrice, 18),
+        tp: parseUnits(_trade.tp, 18),
+        sl: parseUnits(_trade.sl, 18),
+        trader: _trade.trader as `0x${string}`,
+        leverage: Math.round(Number(_trade.leverage) * 100),
+        pairIndex: Number(_trade.pairIndex),
+        index: Number(_trade.index ?? "0"),
+        buy: _trade.buy ?? true,
+      };
+
+      console.log("tradeArray", tradeArray);
+      console.log("type", _type);
+      console.log("slippage", _slippage);
 
       const preparedTx = await walletClient.prepareTransactionRequest({
         to: TRADING_CONTRACT_ADDRESS,
         abi: TRADING_ABI,
         functionName: "openTrade",
-        args: [tradeArray, Number(_type), BigInt(_slippage)],
+        args: [tradeArray, _type, _slippage],
         gas: 800000n,
       });
 
-      const serializedTx = serializeTransaction(preparedTx as any);
+      console.log("preparedTx", preparedTx);
+
+      const serializedTx = serializeTransaction({
+        ...preparedTx,
+        data: encodeFunctionData({
+          abi: TRADING_ABI,
+          functionName: "openTrade",
+          args: [tradeArray, _type, _slippage],
+        }),
+      } as any);
+
       const signedTx = await client.signTransaction(
         TRADING_ABI,
         serializedTx,
@@ -337,6 +354,7 @@ export class OstiumMCP {
       const hash = await walletClient.sendRawTransaction({
         serializedTransaction: signedTx as `0x${string}`,
       });
+
       return createSuccessResponse("Successfully opened trade", {
         hash: hash,
         trade: _trade,
@@ -382,7 +400,7 @@ export class OstiumMCP {
         return createErrorResponse(error);
       }
 
-      const { _pairIndex, _index, _amount } = params;
+      const { _pairIndex, _index, _closePercentage } = params;
 
       const walletClient = createWalletClient({
         account: account,
@@ -397,12 +415,23 @@ export class OstiumMCP {
         args: [
           Number(_pairIndex),
           Number(_index ?? "0"),
-          parseUnits(_amount, 6),
+          parseUnits(_closePercentage, 2),
         ],
         gas: 800000n,
       });
 
-      const serializedTx = serializeTransaction(preparedTx as any);
+      const serializedTx = serializeTransaction({
+        ...preparedTx,
+        data: encodeFunctionData({
+          abi: TRADING_ABI,
+          functionName: "closeTradeMarket",
+          args: [
+            Number(_pairIndex),
+            Number(_index ?? "0"),
+            parseUnits(_closePercentage, 2),
+          ],
+        }),
+      } as any);
       const signedTx = await client.signTransaction(
         TRADING_ABI,
         serializedTx,
@@ -416,7 +445,7 @@ export class OstiumMCP {
         hash: hash,
         pairIndex: _pairIndex,
         index: _index,
-        amount: _amount,
+        closePercentage: _closePercentage,
       });
     } catch (error: any) {
       if (error.response && error.response.data && error.response.data.error) {
@@ -477,7 +506,18 @@ export class OstiumMCP {
         gas: 800000n,
       });
 
-      const serializedTx = serializeTransaction(preparedTx as any);
+      const serializedTx = serializeTransaction({
+        ...preparedTx,
+        data: encodeFunctionData({
+          abi: TRADING_ABI,
+          functionName: "updateTp",
+          args: [
+            Number(_pairIndex),
+            Number(_index ?? "0"),
+            parseUnits(_newTP, 18),
+          ],
+        }),
+      } as any);
       const signedTx = await client.signTransaction(
         TRADING_ABI,
         serializedTx,
@@ -552,7 +592,18 @@ export class OstiumMCP {
         gas: 800000n,
       });
 
-      const serializedTx = serializeTransaction(preparedTx as any);
+      const serializedTx = serializeTransaction({
+        ...preparedTx,
+        data: encodeFunctionData({
+          abi: TRADING_ABI,
+          functionName: "updateSl",
+          args: [
+            Number(_pairIndex),
+            Number(_index ?? "0"),
+            parseUnits(_newSL, 18),
+          ],
+        }),
+      } as any);
       const signedTx = await client.signTransaction(
         TRADING_ABI,
         serializedTx,
@@ -627,7 +678,18 @@ export class OstiumMCP {
         gas: 800000n,
       });
 
-      const serializedTx = serializeTransaction(preparedTx as any);
+      const serializedTx = serializeTransaction({
+        ...preparedTx,
+        data: encodeFunctionData({
+          abi: TRADING_ABI,
+          functionName: "topUpCollateral",
+          args: [
+            Number(_pairIndex),
+            Number(_index ?? "0"),
+            parseUnits(_amount, 6),
+          ],
+        }),
+      } as any);
       const signedTx = await client.signTransaction(
         TRADING_ABI,
         serializedTx,

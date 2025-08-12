@@ -27,7 +27,7 @@ export const OpenTradeSchema = {
 export const CloseTradeSchema = {
   _pairIndex: z.string(),
   _index: z.string().default("0"),
-  _amount: z.string(),
+  _closePercentage: z.string(),
 };
 
 export const UpdateTpSchema = {
@@ -92,7 +92,7 @@ export interface OpenTradeParams {
 export interface CloseTradeParams {
   _pairIndex: string;
   _index?: string;
-  _amount: string;
+  _closePercentage: string;
 }
 
 export interface UpdateTpParams {
