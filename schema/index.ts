@@ -73,6 +73,12 @@ export const GetTradeByIdSchema = {
   tradeId: z.string(),
 };
 
+export const GetAssetPriceSchema = {
+  asset: z
+    .string()
+    .describe("Asset pair symbol (e.g., EURUSD, BTCUSD, GBPUSD)"),
+};
+
 export interface OpenTradeParams {
   _trade: {
     collateral: string;

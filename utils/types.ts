@@ -215,6 +215,27 @@ export interface GetHistoricalPricesResponse {
   results: string;
 }
 
+/**
+ * Price feed data from Ostium API
+ */
+export interface PriceFeedData {
+  feed_id: string;
+  bid: number;
+  mid: number;
+  ask: number;
+  isMarketOpen: boolean;
+  isDayTradingClosed: boolean;
+  secondsToToggleIsDayTradingClosed: number;
+  from: string;
+  to: string;
+  timestampSeconds: number;
+}
+
+/**
+ * Response from Ostium prices API
+ */
+export interface OstiumPricesResponse extends Array<PriceFeedData> {}
+
 export interface TokenInfo {
   address: Address;
   name: string;
