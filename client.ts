@@ -14,7 +14,7 @@ import {
   encodeFunctionData,
   parseUnits,
 } from "viem";
-import { arbitrum, mainnet } from "viem/chains";
+import { arbitrum } from "viem/chains";
 import { getAuthContext } from "@osiris-ai/sdk";
 import { EVMWalletClient } from "@osiris-ai/web3-evm-sdk";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -24,7 +24,7 @@ import {
   TokenInfo,
 } from "./utils/types.js";
 import { ERC20_ABI } from "./utils/ABIs/ERC20_ABI.js";
-import { TRADING_ABI } from "./utils/ABIs/trading_abi.js";
+import { TRADING_ABI } from "./utils/ABIs/TRADING_ABI.js";
 import { TRADING_CONTRACT_ADDRESS } from "./utils/constants.js";
 import { z } from "zod";
 import { registerOpenTradeTools } from "./tools/open-trade.js";
@@ -188,7 +188,7 @@ export class OstiumMCP {
     try {
       const walletClient = createWalletClient({
         account: account,
-        chain: mainnet,
+        chain: arbitrum,
         transport: http(),
       });
 
@@ -196,7 +196,7 @@ export class OstiumMCP {
       const amountInWei = parseUnits(amount.toString(), tokenInInfo.decimals);
 
       const preparedTx = await this.publicClient.prepareTransactionRequest({
-        chain: mainnet,
+        chain: arbitrum,
         account: account,
         to: tokenAddress,
         abi: ERC20_ABI,
@@ -207,7 +207,7 @@ export class OstiumMCP {
       console.log(
         JSON.stringify(
           {
-            chain: mainnet,
+            chain: arbitrum,
             account: account,
             to: tokenAddress,
             abi: ERC20_ABI,
@@ -303,7 +303,7 @@ export class OstiumMCP {
 
       const walletClient = createWalletClient({
         account: account,
-        chain: mainnet,
+        chain: arbitrum,
         transport: http(),
       });
 
@@ -386,7 +386,7 @@ export class OstiumMCP {
 
       const walletClient = createWalletClient({
         account: account,
-        chain: mainnet,
+        chain: arbitrum,
         transport: http(),
       });
 
@@ -461,7 +461,7 @@ export class OstiumMCP {
 
       const walletClient = createWalletClient({
         account: account,
-        chain: mainnet,
+        chain: arbitrum,
         transport: http(),
       });
 
@@ -536,7 +536,7 @@ export class OstiumMCP {
 
       const walletClient = createWalletClient({
         account: account,
-        chain: mainnet,
+        chain: arbitrum,
         transport: http(),
       });
 
@@ -611,7 +611,7 @@ export class OstiumMCP {
 
       const walletClient = createWalletClient({
         account: account,
-        chain: mainnet,
+        chain: arbitrum,
         transport: http(),
       });
 

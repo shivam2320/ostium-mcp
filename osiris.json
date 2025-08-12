@@ -1,10 +1,20 @@
 {
-  "name": "ostium-mcp",
-  "id": "ostium-mcp",
-  "description": "ostium-mcp MCP Server",
+  "name": "ostium-test",
+  "id": "ostium-test",
+  "description": "ostium-test MCP Server",
   "hubUrl": "https://api.osirislabs.xyz/v1",
-  "packageId": "20e4b045-d900-4106-baae-05d97c8699f3",
-  "serviceClients": [],
+  "packageId": "2279f033-dafc-4296-9211-17b659654474",
+  "serviceClients": [
+    {
+      "serviceClientId": "1d927d6c-2170-41d5-ac1b-00c4cdc3259d",
+      "name": "turnkey",
+      "scopes": [],
+      "policy": {
+        "allow": [],
+        "deny": []
+      }
+    }
+  ],
   "baseUrl": "http://localhost:3000",
   "user": {
     "name": "Shivam",
