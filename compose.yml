@@ -1,0 +1,33 @@
+services:
+  ostium-mcp:
+    image: ostium-mcp:latest
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${MCP_PORT:-3000}
+    env_file: .env
+    ports:
+      - "${MCP_PORT:-3000}:3000"
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    networks:
+      - mcp-network
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - ostium-mcp
+    networks:
+      - mcp-network
+networks:
+  mcp-network:
+    driver: bridge
