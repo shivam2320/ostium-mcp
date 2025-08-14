@@ -26,7 +26,7 @@ async function start(): Promise<void> {
       port,
       mcpPath: "/mcp",
       callbackBasePath: "/callback",
-      baseUrl: "http://localhost:3000",
+      baseUrl: "https://ostium-mcp.osirislabs.xyz",
       logger: (m: string) => console.log(m),
     },
     configure: (s: McpServer) => ostiumMCP.configureServer(s),
