@@ -1,5 +1,4 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerHelloTool } from "./tools/hello-world.js";
 import { registerHelloPrompt } from "./prompts/hello-world.js";
 import { registerHelloResource } from "./resources/hello-world.js";
 
@@ -44,6 +43,8 @@ import {
   UpdateSlParams,
   ModifyTradeParams,
 } from "./schema/index.js";
+import { findPairIndex } from "./utils/pairs.js";
+import { getCurrentMidPrice } from "./utils/price-fetcher.js";
 
 export class OstiumMCP {
   private hubBaseUrl: string;
@@ -305,6 +306,43 @@ export class OstiumMCP {
 
       const { _trade, _type, _slippage } = params;
 
+      let pairIndex: number;
+      try {
+        pairIndex = findPairIndex(_trade.from, _trade.to || "USD");
+      } catch (error) {
+        const err = new Error(
+          `Invalid trading pair: ${_trade.from}/${_trade.to || "USD"}. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        err.name = "InvalidTradingPairError";
+        return createErrorResponse(err);
+      }
+
+      // Auto-fetch current market price if not provided
+      let openPrice: string;
+      if (_trade.openPrice) {
+        openPrice = _trade.openPrice;
+      } else {
+        try {
+          console.log(
+            `Auto-fetching current market price for ${_trade.from}/${
+              _trade.to || "USD"
+            }...`
+          );
+          openPrice = await getCurrentMidPrice(_trade.from, _trade.to || "USD");
+          console.log(`Using current mid price: ${openPrice}`);
+        } catch (error) {
+          const err = new Error(
+            `Failed to fetch current market price for ${_trade.from}/${
+              _trade.to || "USD"
+            }: ${error instanceof Error ? error.message : String(error)}`
+          );
+          err.name = "PriceFetchError";
+          return createErrorResponse(err);
+        }
+      }
+
       const walletClient = createWalletClient({
         account: account,
         chain: arbitrum,
@@ -313,12 +351,12 @@ export class OstiumMCP {
 
       const tradeArray = {
         collateral: parseUnits(_trade.collateral, 6),
-        openPrice: parseUnits(_trade.openPrice, 18),
+        openPrice: parseUnits(openPrice, 18),
         tp: parseUnits(_trade.tp, 18),
         sl: parseUnits(_trade.sl, 18),
         trader: _trade.trader as `0x${string}`,
         leverage: Math.round(Number(_trade.leverage) * 100),
-        pairIndex: Number(_trade.pairIndex),
+        pairIndex: pairIndex,
         index: Number(_trade.index ?? "0"),
         buy: _trade.buy ?? true,
       };
@@ -401,7 +439,20 @@ export class OstiumMCP {
         return createErrorResponse(error);
       }
 
-      const { _pairIndex, _index, _closePercentage } = params;
+      const { from, to, _index, _closePercentage } = params;
+
+      let pairIndex: number;
+      try {
+        pairIndex = findPairIndex(from, to || "USD");
+      } catch (error) {
+        const err = new Error(
+          `Invalid trading pair: ${from}/${to || "USD"}. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        err.name = "InvalidTradingPairError";
+        return createErrorResponse(err);
+      }
 
       const walletClient = createWalletClient({
         account: account,
@@ -414,7 +465,7 @@ export class OstiumMCP {
         abi: TRADING_ABI,
         functionName: "closeTradeMarket",
         args: [
-          Number(_pairIndex),
+          pairIndex,
           Number(_index ?? "0"),
           parseUnits(_closePercentage, 2),
         ],
@@ -427,7 +478,7 @@ export class OstiumMCP {
           abi: TRADING_ABI,
           functionName: "closeTradeMarket",
           args: [
-            Number(_pairIndex),
+            pairIndex,
             Number(_index ?? "0"),
             parseUnits(_closePercentage, 2),
           ],
@@ -444,7 +495,9 @@ export class OstiumMCP {
       });
       return createSuccessResponse("Successfully closed trade", {
         hash: hash,
-        pairIndex: _pairIndex,
+        from: from,
+        to: to || "USD",
+        pairIndex: pairIndex,
         index: _index,
         closePercentage: _closePercentage,
       });
@@ -487,7 +540,20 @@ export class OstiumMCP {
         return createErrorResponse(error);
       }
 
-      const { _pairIndex, _index, _newTP } = params;
+      const { from, to, _index, _newTP } = params;
+
+      let pairIndex: number;
+      try {
+        pairIndex = findPairIndex(from, to || "USD");
+      } catch (error) {
+        const err = new Error(
+          `Invalid trading pair: ${from}/${to || "USD"}. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        err.name = "InvalidTradingPairError";
+        return createErrorResponse(err);
+      }
 
       const walletClient = createWalletClient({
         account: account,
@@ -499,11 +565,7 @@ export class OstiumMCP {
         to: TRADING_CONTRACT_ADDRESS,
         abi: TRADING_ABI,
         functionName: "updateTp",
-        args: [
-          Number(_pairIndex),
-          Number(_index ?? "0"),
-          parseUnits(_newTP, 18),
-        ],
+        args: [pairIndex, Number(_index ?? "0"), parseUnits(_newTP, 18)],
         gas: 800000n,
       });
 
@@ -512,11 +574,7 @@ export class OstiumMCP {
         data: encodeFunctionData({
           abi: TRADING_ABI,
           functionName: "updateTp",
-          args: [
-            Number(_pairIndex),
-            Number(_index ?? "0"),
-            parseUnits(_newTP, 18),
-          ],
+          args: [pairIndex, Number(_index ?? "0"), parseUnits(_newTP, 18)],
         }),
       } as any);
       const signedTx = await client.signTransaction(
@@ -530,7 +588,9 @@ export class OstiumMCP {
       });
       return createSuccessResponse("Successfully updated TP", {
         hash: hash,
-        pairIndex: _pairIndex,
+        from: from,
+        to: to || "USD",
+        pairIndex: pairIndex,
         index: _index,
         newTP: _newTP,
       });
@@ -573,7 +633,20 @@ export class OstiumMCP {
         return createErrorResponse(error);
       }
 
-      const { _pairIndex, _index, _newSL } = params;
+      const { from, to, _index, _newSL } = params;
+
+      let pairIndex: number;
+      try {
+        pairIndex = findPairIndex(from, to || "USD");
+      } catch (error) {
+        const err = new Error(
+          `Invalid trading pair: ${from}/${to || "USD"}. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        err.name = "InvalidTradingPairError";
+        return createErrorResponse(err);
+      }
 
       const walletClient = createWalletClient({
         account: account,
@@ -585,11 +658,7 @@ export class OstiumMCP {
         to: TRADING_CONTRACT_ADDRESS,
         abi: TRADING_ABI,
         functionName: "updateSl",
-        args: [
-          Number(_pairIndex),
-          Number(_index ?? "0"),
-          parseUnits(_newSL, 18),
-        ],
+        args: [pairIndex, Number(_index ?? "0"), parseUnits(_newSL, 18)],
         gas: 800000n,
       });
 
@@ -598,11 +667,7 @@ export class OstiumMCP {
         data: encodeFunctionData({
           abi: TRADING_ABI,
           functionName: "updateSl",
-          args: [
-            Number(_pairIndex),
-            Number(_index ?? "0"),
-            parseUnits(_newSL, 18),
-          ],
+          args: [pairIndex, Number(_index ?? "0"), parseUnits(_newSL, 18)],
         }),
       } as any);
       const signedTx = await client.signTransaction(
@@ -616,7 +681,9 @@ export class OstiumMCP {
       });
       return createSuccessResponse("Successfully updated SL", {
         hash: hash,
-        pairIndex: _pairIndex,
+        from: from,
+        to: to || "USD",
+        pairIndex: pairIndex,
         index: _index,
         newSL: _newSL,
       });
@@ -659,7 +726,20 @@ export class OstiumMCP {
         return createErrorResponse(error);
       }
 
-      const { _pairIndex, _index, _amount } = params;
+      const { from, to, _index, _amount } = params;
+
+      let pairIndex: number;
+      try {
+        pairIndex = findPairIndex(from, to || "USD");
+      } catch (error) {
+        const err = new Error(
+          `Invalid trading pair: ${from}/${to || "USD"}. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        err.name = "InvalidTradingPairError";
+        return createErrorResponse(err);
+      }
 
       const walletClient = createWalletClient({
         account: account,
@@ -671,11 +751,7 @@ export class OstiumMCP {
         to: TRADING_CONTRACT_ADDRESS,
         abi: TRADING_ABI,
         functionName: "topUpCollateral",
-        args: [
-          Number(_pairIndex),
-          Number(_index ?? "0"),
-          parseUnits(_amount, 6),
-        ],
+        args: [pairIndex, Number(_index ?? "0"), parseUnits(_amount, 6)],
         gas: 800000n,
       });
 
@@ -684,11 +760,7 @@ export class OstiumMCP {
         data: encodeFunctionData({
           abi: TRADING_ABI,
           functionName: "topUpCollateral",
-          args: [
-            Number(_pairIndex),
-            Number(_index ?? "0"),
-            parseUnits(_amount, 6),
-          ],
+          args: [pairIndex, Number(_index ?? "0"), parseUnits(_amount, 6)],
         }),
       } as any);
       const signedTx = await client.signTransaction(
@@ -702,7 +774,9 @@ export class OstiumMCP {
       });
       return createSuccessResponse("Successfully modified trade", {
         hash: hash,
-        pairIndex: _pairIndex,
+        from: from,
+        to: to || "USD",
+        pairIndex: pairIndex,
         index: _index,
         amount: _amount,
       });
@@ -715,7 +789,6 @@ export class OstiumMCP {
   }
 
   configureServer(server: McpServer): void {
-    registerHelloTool(server);
     registerHelloPrompt(server);
     registerHelloResource(server);
     registerOpenTradeTools(server, this);

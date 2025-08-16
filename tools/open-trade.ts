@@ -38,8 +38,14 @@ export function registerOpenTradeTools(
         });
 
         logger.toolCompleted("open_trade");
+        const priceMessage = _trade.openPrice
+          ? `at specified price ${_trade.openPrice}`
+          : `at current market mid price`;
+
         return createSuccessResponse(
-          `✅ Open trade successfully for ${_trade.trader}`,
+          `✅ Open trade successfully for ${_trade.trader} on ${_trade.from}/${
+            _trade.to || "USD"
+          } ${priceMessage}`,
           result
         );
       } catch (error) {

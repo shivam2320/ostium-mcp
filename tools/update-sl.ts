@@ -23,23 +23,25 @@ export function registerUpdateSlTools(
     "update_sl",
     "Update stop loss",
     UpdateSlSchema,
-    async ({ _pairIndex, _index, _newSL }) => {
+    async ({ from, to, _index, _newSL }) => {
       try {
         logger.toolCalled("update_sl", {
-          _pairIndex,
+          from,
+          to,
           _index,
           _newSL,
         });
 
         const result = await ostiumMCP.updateSl({
-          _pairIndex,
+          from,
+          to,
           _index,
           _newSL,
         });
 
         logger.toolCompleted("update_sl");
         return createSuccessResponse(
-          `✅ Update SL successfully for pair ${_pairIndex}`,
+          `✅ Update SL successfully for pair ${from}/${to || "USD"}`,
           result
         );
       } catch (error) {

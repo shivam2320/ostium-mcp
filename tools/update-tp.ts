@@ -23,23 +23,25 @@ export function registerUpdateTpTools(
     "update_tp",
     "Update take profit",
     UpdateTpSchema,
-    async ({ _pairIndex, _index, _newTP }) => {
+    async ({ from, to, _index, _newTP }) => {
       try {
         logger.toolCalled("update_tp", {
-          _pairIndex,
+          from,
+          to,
           _index,
           _newTP,
         });
 
         const result = await ostiumMCP.updateTp({
-          _pairIndex,
+          from,
+          to,
           _index,
           _newTP,
         });
 
         logger.toolCompleted("update_tp");
         return createSuccessResponse(
-          `✅ Update TP successfully for pair ${_pairIndex}`,
+          `✅ Update TP successfully for pair ${from}/${to || "USD"}`,
           result
         );
       } catch (error) {

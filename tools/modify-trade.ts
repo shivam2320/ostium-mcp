@@ -23,23 +23,25 @@ export function registerModifyTradeTools(
     "modify_trade",
     "Modify trade collateral",
     ModifyTradeSchema,
-    async ({ _pairIndex, _index, _amount }) => {
+    async ({ from, to, _index, _amount }) => {
       try {
         logger.toolCalled("modify_trade", {
-          _pairIndex,
+          from,
+          to,
           _index,
           _amount,
         });
 
         const result = await ostiumMCP.modifyTrade({
-          _pairIndex,
+          from,
+          to,
           _index,
           _amount,
         });
 
         logger.toolCompleted("modify_trade");
         return createSuccessResponse(
-          `✅ Modify trade successfully for pair ${_pairIndex}`,
+          `✅ Modify trade successfully for pair ${from}/${to || "USD"}`,
           result
         );
       } catch (error) {
