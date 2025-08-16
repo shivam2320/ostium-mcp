@@ -11,7 +11,7 @@ export const HelloPromptSchema = {
 export const OpenTradeSchema = {
   _trade: z.object({
     collateral: z.string(),
-    openPrice: z.string(),
+    openPrice: z.string().optional(),
     tp: z.string(),
     sl: z.string(),
     trader: z.string(),
@@ -87,7 +87,7 @@ export const GetAssetPriceSchema = {
 export interface OpenTradeParams {
   _trade: {
     collateral: string;
-    openPrice: string;
+    openPrice?: string;
     tp: string;
     sl: string;
     trader: string;

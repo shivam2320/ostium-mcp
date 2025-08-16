@@ -45,6 +45,7 @@ import {
   ModifyTradeParams,
 } from "./schema/index.js";
 import { findPairIndex } from "./utils/pairs.js";
+import { getCurrentMidPrice } from "./utils/price-fetcher.js";
 
 export class OstiumMCP {
   private hubBaseUrl: string;
@@ -319,6 +320,30 @@ export class OstiumMCP {
         return createErrorResponse(err);
       }
 
+      // Auto-fetch current market price if not provided
+      let openPrice: string;
+      if (_trade.openPrice) {
+        openPrice = _trade.openPrice;
+      } else {
+        try {
+          console.log(
+            `Auto-fetching current market price for ${_trade.from}/${
+              _trade.to || "USD"
+            }...`
+          );
+          openPrice = await getCurrentMidPrice(_trade.from, _trade.to || "USD");
+          console.log(`Using current mid price: ${openPrice}`);
+        } catch (error) {
+          const err = new Error(
+            `Failed to fetch current market price for ${_trade.from}/${
+              _trade.to || "USD"
+            }: ${error instanceof Error ? error.message : String(error)}`
+          );
+          err.name = "PriceFetchError";
+          return createErrorResponse(err);
+        }
+      }
+
       const walletClient = createWalletClient({
         account: account,
         chain: arbitrum,
@@ -327,7 +352,7 @@ export class OstiumMCP {
 
       const tradeArray = {
         collateral: parseUnits(_trade.collateral, 6),
-        openPrice: parseUnits(_trade.openPrice, 18),
+        openPrice: parseUnits(openPrice, 18),
         tp: parseUnits(_trade.tp, 18),
         sl: parseUnits(_trade.sl, 18),
         trader: _trade.trader as `0x${string}`,
