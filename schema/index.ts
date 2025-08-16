@@ -16,7 +16,8 @@ export const OpenTradeSchema = {
     sl: z.string(),
     trader: z.string(),
     leverage: z.string(),
-    pairIndex: z.string(),
+    from: z.string(),
+    to: z.string().default("USD"),
     index: z.string().default("0"),
     buy: z.boolean().default(true),
   }),
@@ -87,7 +88,8 @@ export interface OpenTradeParams {
     sl: string;
     trader: string;
     leverage: string;
-    pairIndex: string;
+    from: string;
+    to?: string;
     index?: string;
     buy?: boolean;
   };

@@ -44,6 +44,7 @@ import {
   UpdateSlParams,
   ModifyTradeParams,
 } from "./schema/index.js";
+import { findPairIndex } from "./utils/pairs.js";
 
 export class OstiumMCP {
   private hubBaseUrl: string;
@@ -305,6 +306,19 @@ export class OstiumMCP {
 
       const { _trade, _type, _slippage } = params;
 
+      let pairIndex: number;
+      try {
+        pairIndex = findPairIndex(_trade.from, _trade.to || "USD");
+      } catch (error) {
+        const err = new Error(
+          `Invalid trading pair: ${_trade.from}/${_trade.to || "USD"}. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        err.name = "InvalidTradingPairError";
+        return createErrorResponse(err);
+      }
+
       const walletClient = createWalletClient({
         account: account,
         chain: arbitrum,
@@ -318,7 +332,7 @@ export class OstiumMCP {
         sl: parseUnits(_trade.sl, 18),
         trader: _trade.trader as `0x${string}`,
         leverage: Math.round(Number(_trade.leverage) * 100),
-        pairIndex: Number(_trade.pairIndex),
+        pairIndex: pairIndex,
         index: Number(_trade.index ?? "0"),
         buy: _trade.buy ?? true,
       };
