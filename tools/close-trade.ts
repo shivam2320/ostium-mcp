@@ -40,10 +40,7 @@ export function registerCloseTradeTools(
         });
 
         logger.toolCompleted("close_trade");
-        return createSuccessResponse(
-          `✅ Close trade successfully for pair ${from}/${to || "USD"}`,
-          result
-        );
+        return result;
       } catch (error) {
         return handleToolError("close_trade", error);
       }

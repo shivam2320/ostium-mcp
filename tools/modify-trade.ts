@@ -40,10 +40,7 @@ export function registerModifyTradeTools(
         });
 
         logger.toolCompleted("modify_trade");
-        return createSuccessResponse(
-          `✅ Modify trade successfully for pair ${from}/${to || "USD"}`,
-          result
-        );
+        return result;
       } catch (error) {
         return handleToolError("modify_trade", error);
       }

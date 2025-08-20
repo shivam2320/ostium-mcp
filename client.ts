@@ -282,11 +282,9 @@ export class OstiumMCP {
 
       const wallet = this.walletToSession[context.sessionId];
       if (!wallet) {
-        const error = new Error(
+        throw new Error(
           "No wallet found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoWalletFoundError";
-        return createErrorResponse(error);
       }
 
       const client = new EVMWalletClient(
@@ -297,11 +295,9 @@ export class OstiumMCP {
 
       const account = await client.getViemAccount(wallet, this.chain);
       if (!account) {
-        const error = new Error(
+        throw new Error(
           "No account found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoAccountFoundError";
-        return createErrorResponse(error);
       }
 
       const { _trade, _type, _slippage } = params;
@@ -310,13 +306,11 @@ export class OstiumMCP {
       try {
         pairIndex = findPairIndex(_trade.from, _trade.to || "USD");
       } catch (error) {
-        const err = new Error(
+        throw new Error(
           `Invalid trading pair: ${_trade.from}/${_trade.to || "USD"}. ${
             error instanceof Error ? error.message : String(error)
           }`
         );
-        err.name = "InvalidTradingPairError";
-        return createErrorResponse(err);
       }
 
       // Auto-fetch current market price if not provided
@@ -333,13 +327,11 @@ export class OstiumMCP {
           openPrice = await getCurrentMidPrice(_trade.from, _trade.to || "USD");
           console.log(`Using current mid price: ${openPrice}`);
         } catch (error) {
-          const err = new Error(
+          throw new Error(
             `Failed to fetch current market price for ${_trade.from}/${
               _trade.to || "USD"
             }: ${error instanceof Error ? error.message : String(error)}`
           );
-          err.name = "PriceFetchError";
-          return createErrorResponse(err);
         }
       }
 
@@ -401,10 +393,10 @@ export class OstiumMCP {
         slippage: _slippage,
       });
     } catch (error: any) {
-      if (error.response && error.response.data && error.response.data.error) {
+      if (error.response?.data?.error) {
         return createErrorResponse(error.response.data.error);
       }
-      throw new Error(`Open trade failed: ${error}`);
+      return createErrorResponse(error);
     }
   }
 
@@ -417,11 +409,9 @@ export class OstiumMCP {
 
       const wallet = this.walletToSession[context.sessionId];
       if (!wallet) {
-        const error = new Error(
+        throw new Error(
           "No wallet found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoWalletFoundError";
-        return createErrorResponse(error);
       }
 
       const client = new EVMWalletClient(
@@ -432,11 +422,9 @@ export class OstiumMCP {
 
       const account = await client.getViemAccount(wallet, this.chain);
       if (!account) {
-        const error = new Error(
+        return createErrorResponse(
           "No account found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoAccountFoundError";
-        return createErrorResponse(error);
       }
 
       const { from, to, _index, _closePercentage } = params;
@@ -445,13 +433,11 @@ export class OstiumMCP {
       try {
         pairIndex = findPairIndex(from, to || "USD");
       } catch (error) {
-        const err = new Error(
+        return createErrorResponse(
           `Invalid trading pair: ${from}/${to || "USD"}. ${
             error instanceof Error ? error.message : String(error)
           }`
         );
-        err.name = "InvalidTradingPairError";
-        return createErrorResponse(err);
       }
 
       const walletClient = createWalletClient({
@@ -502,10 +488,10 @@ export class OstiumMCP {
         closePercentage: _closePercentage,
       });
     } catch (error: any) {
-      if (error.response && error.response.data && error.response.data.error) {
+      if (error.response?.data?.error) {
         return createErrorResponse(error.response.data.error);
       }
-      throw new Error(`Close trade failed: ${error}`);
+      return createErrorResponse(error);
     }
   }
 
@@ -518,11 +504,9 @@ export class OstiumMCP {
 
       const wallet = this.walletToSession[context.sessionId];
       if (!wallet) {
-        const error = new Error(
+        throw new Error(
           "No wallet found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoWalletFoundError";
-        return createErrorResponse(error);
       }
 
       const client = new EVMWalletClient(
@@ -533,11 +517,9 @@ export class OstiumMCP {
 
       const account = await client.getViemAccount(wallet, this.chain);
       if (!account) {
-        const error = new Error(
+        throw new Error(
           "No account found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoAccountFoundError";
-        return createErrorResponse(error);
       }
 
       const { from, to, _index, _newTP } = params;
@@ -546,13 +528,11 @@ export class OstiumMCP {
       try {
         pairIndex = findPairIndex(from, to || "USD");
       } catch (error) {
-        const err = new Error(
+        throw new Error(
           `Invalid trading pair: ${from}/${to || "USD"}. ${
             error instanceof Error ? error.message : String(error)
           }`
         );
-        err.name = "InvalidTradingPairError";
-        return createErrorResponse(err);
       }
 
       const walletClient = createWalletClient({
@@ -595,10 +575,10 @@ export class OstiumMCP {
         newTP: _newTP,
       });
     } catch (error: any) {
-      if (error.response && error.response.data && error.response.data.error) {
+      if (error.response?.data?.error) {
         return createErrorResponse(error.response.data.error);
       }
-      throw new Error(`Update TP failed: ${error}`);
+      return createErrorResponse(error);
     }
   }
 
@@ -611,11 +591,9 @@ export class OstiumMCP {
 
       const wallet = this.walletToSession[context.sessionId];
       if (!wallet) {
-        const error = new Error(
+        throw new Error(
           "No wallet found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoWalletFoundError";
-        return createErrorResponse(error);
       }
 
       const client = new EVMWalletClient(
@@ -626,11 +604,9 @@ export class OstiumMCP {
 
       const account = await client.getViemAccount(wallet, this.chain);
       if (!account) {
-        const error = new Error(
+        throw new Error(
           "No account found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoAccountFoundError";
-        return createErrorResponse(error);
       }
 
       const { from, to, _index, _newSL } = params;
@@ -639,13 +615,11 @@ export class OstiumMCP {
       try {
         pairIndex = findPairIndex(from, to || "USD");
       } catch (error) {
-        const err = new Error(
+        throw new Error(
           `Invalid trading pair: ${from}/${to || "USD"}. ${
             error instanceof Error ? error.message : String(error)
           }`
         );
-        err.name = "InvalidTradingPairError";
-        return createErrorResponse(err);
       }
 
       const walletClient = createWalletClient({
@@ -688,10 +662,10 @@ export class OstiumMCP {
         newSL: _newSL,
       });
     } catch (error: any) {
-      if (error.response && error.response.data && error.response.data.error) {
+      if (error.response?.data?.error) {
         return createErrorResponse(error.response.data.error);
       }
-      throw new Error(`Update SL failed: ${error}`);
+      return createErrorResponse(error);
     }
   }
 
@@ -704,11 +678,9 @@ export class OstiumMCP {
 
       const wallet = this.walletToSession[context.sessionId];
       if (!wallet) {
-        const error = new Error(
+        throw new Error(
           "No wallet found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoWalletFoundError";
-        return createErrorResponse(error);
       }
 
       const client = new EVMWalletClient(
@@ -719,11 +691,9 @@ export class OstiumMCP {
 
       const account = await client.getViemAccount(wallet, this.chain);
       if (!account) {
-        const error = new Error(
+        throw new Error(
           "No account found, you need to choose a wallet first with chooseWallet"
         );
-        error.name = "NoAccountFoundError";
-        return createErrorResponse(error);
       }
 
       const { from, to, _index, _amount } = params;
@@ -732,13 +702,11 @@ export class OstiumMCP {
       try {
         pairIndex = findPairIndex(from, to || "USD");
       } catch (error) {
-        const err = new Error(
+        throw new Error(
           `Invalid trading pair: ${from}/${to || "USD"}. ${
             error instanceof Error ? error.message : String(error)
           }`
         );
-        err.name = "InvalidTradingPairError";
-        return createErrorResponse(err);
       }
 
       const walletClient = createWalletClient({
@@ -781,10 +749,10 @@ export class OstiumMCP {
         amount: _amount,
       });
     } catch (error: any) {
-      if (error.response && error.response.data && error.response.data.error) {
+      if (error.response?.data?.error) {
         return createErrorResponse(error.response.data.error);
       }
-      throw new Error(`Modify trade failed: ${error}`);
+      return createErrorResponse(error);
     }
   }
 

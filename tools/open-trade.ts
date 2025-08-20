@@ -42,12 +42,7 @@ export function registerOpenTradeTools(
           ? `at specified price ${_trade.openPrice}`
           : `at current market mid price`;
 
-        return createSuccessResponse(
-          `✅ Open trade successfully for ${_trade.trader} on ${_trade.from}/${
-            _trade.to || "USD"
-          } ${priceMessage}`,
-          result
-        );
+        return result;
       } catch (error) {
         return handleToolError("open_trade", error);
       }

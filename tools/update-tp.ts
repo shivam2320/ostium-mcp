@@ -40,10 +40,7 @@ export function registerUpdateTpTools(
         });
 
         logger.toolCompleted("update_tp");
-        return createSuccessResponse(
-          `✅ Update TP successfully for pair ${from}/${to || "USD"}`,
-          result
-        );
+        return result;
       } catch (error) {
         return handleToolError("update_tp", error);
       }

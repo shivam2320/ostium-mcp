@@ -40,10 +40,7 @@ export function registerUpdateSlTools(
         });
 
         logger.toolCompleted("update_sl");
-        return createSuccessResponse(
-          `✅ Update SL successfully for pair ${from}/${to || "USD"}`,
-          result
-        );
+        return result;
       } catch (error) {
         return handleToolError("update_sl", error);
       }
