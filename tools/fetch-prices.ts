@@ -150,7 +150,7 @@ export function registerFetchPricesTools(server: McpServer): void {
 
   server.tool(
     "fetch_asset_prices",
-    "Fetch current prices for all available assets from Ostium",
+    "Retrieve real-time price data for all available trading assets on the Ostium platform, including current bid/ask prices, price changes, volume data, and market timestamps. Essential for market overview and price discovery.",
     {},
     async (): Promise<CallToolResult> => {
       try {
@@ -172,7 +172,7 @@ export function registerFetchPricesTools(server: McpServer): void {
 
   server.tool(
     "fetch_specific_asset_price",
-    "Fetch current price for a specific asset pair from Ostium",
+    "Retrieve detailed real-time price information for a specific asset pair, including current price, bid/ask spread, 24h change, volume, and last update timestamp. Ideal for focused market analysis and trade execution planning.",
     GetAssetPriceSchema,
     async ({ asset }: { asset: string }): Promise<CallToolResult> => {
       try {

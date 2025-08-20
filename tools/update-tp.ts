@@ -21,7 +21,7 @@ export function registerUpdateTpTools(
 
   server.tool(
     "update_tp",
-    "Update take profit",
+    "Update the take profit level for an existing trading position by specifying the trading pair, position index, and new take profit price. Allows dynamic risk management by adjusting profit-taking targets as market conditions change.",
     UpdateTpSchema,
     async ({ from, to, _index, _newTP }) => {
       try {

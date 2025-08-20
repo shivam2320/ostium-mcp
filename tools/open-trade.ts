@@ -21,7 +21,7 @@ export function registerOpenTradeTools(
 
   server.tool(
     "open_trade",
-    "Open a trade",
+    "Open a new trading position on any supported trading pair (e.g., BTC/USD, ETH/USD) with customizable parameters: USDC collateral amount, leverage multiplier, take profit and stop loss levels, trade direction (long/short), order type (market for immediate execution, limit for specific price, or stop for trigger price), and slippage tolerance. Supports both immediate market orders and pending orders with specific execution prices.",
     OpenTradeSchema,
     async ({ _trade, _type, _slippage }) => {
       try {

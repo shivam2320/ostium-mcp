@@ -26,7 +26,10 @@ async function start(): Promise<void> {
       port,
       mcpPath: "/mcp",
       callbackBasePath: "/callback",
-      baseUrl: "https://ostium-mcp.osirislabs.xyz",
+      baseUrl:
+        process.env.NODE_ENV === "production"
+          ? "https://ostium-mcp.osirislabs.xyz"
+          : "http://localhost:3000",
       logger: (m: string) => console.log(m),
       corsOptions: {
         origin: "*",

@@ -27,6 +27,7 @@ import { TRADING_ABI } from "./utils/ABIs/TRADING_ABI.js";
 import {
   STORAGE_CONTRACT_ADDRESS,
   TRADING_CONTRACT_ADDRESS,
+  USDC_CONTRACT_ADDRESS,
 } from "./utils/constants.js";
 import { z } from "zod";
 import { registerOpenTradeTools } from "./tools/open-trade.js";
@@ -157,10 +158,7 @@ export class OstiumMCP {
     }
   }
 
-  async approveToken(
-    tokenAddress: Address,
-    amount: bigint
-  ): Promise<CallToolResult> {
+  async approveToken(amount: bigint): Promise<CallToolResult> {
     const { token, context } = getAuthContext("osiris");
     if (!token || !context) {
       throw new Error("No token or context found");
@@ -196,6 +194,8 @@ export class OstiumMCP {
         chain: arbitrum,
         transport: http(),
       });
+
+      let tokenAddress = USDC_CONTRACT_ADDRESS as Address;
 
       const tokenInInfo = await this.getTokenInfo(tokenAddress);
       const amountInWei = parseUnits(amount.toString(), tokenInInfo.decimals);
@@ -822,14 +822,10 @@ export class OstiumMCP {
       "approveToken",
       "Approve token spending",
       {
-        tokenAddress: z.string(),
         amount: z.string(),
       },
-      async ({ tokenAddress, amount }) => {
-        const allowance = await this.approveToken(
-          tokenAddress as Address,
-          BigInt(amount)
-        );
+      async ({ amount }) => {
+        const allowance = await this.approveToken(BigInt(amount));
         return allowance;
       }
     );
