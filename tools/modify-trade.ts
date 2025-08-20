@@ -21,7 +21,7 @@ export function registerModifyTradeTools(
 
   server.tool(
     "modify_trade",
-    "Modify trade collateral",
+    "Modify the collateral amount of an existing trading position by specifying the trading pair, position index, and amount to add or remove. Allows position scaling by increasing collateral to boost position size or reducing collateral to take partial profits.",
     ModifyTradeSchema,
     async ({ from, to, _index, _amount }) => {
       try {

@@ -21,7 +21,7 @@ export function registerCloseTradeTools(
 
   server.tool(
     "close_trade",
-    "Close a trade",
+    "Close an existing trading position partially or completely by specifying the trading pair, position index, and closure percentage (in basis points). Allows flexible position management with partial closures (e.g., 50% closure) or full position closure (100%).",
     CloseTradeSchema,
     async ({ from, to, _index, _closePercentage }) => {
       try {

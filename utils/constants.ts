@@ -6,6 +6,9 @@ export const TRADING_CONTRACT_ADDRESS =
 export const STORAGE_CONTRACT_ADDRESS =
   "0xcCd5891083A8acD2074690F65d3024E7D13d66E7";
 
+export const USDC_CONTRACT_ADDRESS =
+  "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+
 export const SUBGRAPH_URL =
   "https://subgraph.satsuma-prod.com/391a61815d32/ostium/ost-prod/api";
 

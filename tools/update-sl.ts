@@ -21,7 +21,7 @@ export function registerUpdateSlTools(
 
   server.tool(
     "update_sl",
-    "Update stop loss",
+    "Update the stop loss level for an existing trading position by specifying the trading pair, position index, and new stop loss price. Essential for risk management, allowing traders to adjust loss-limiting levels to protect profits or limit further losses.",
     UpdateSlSchema,
     async ({ from, to, _index, _newSL }) => {
       try {
