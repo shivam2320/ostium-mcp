@@ -28,6 +28,18 @@ async function start(): Promise<void> {
       callbackBasePath: "/callback",
       baseUrl: "https://ostium-mcp.osirislabs.xyz",
       logger: (m: string) => console.log(m),
+      corsOptions: {
+        origin: "*",
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Requested-With",
+          "Accept",
+          "Origin",
+        ],
+      },
     },
     configure: (s: McpServer) => ostiumMCP.configureServer(s),
   });
