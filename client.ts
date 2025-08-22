@@ -158,6 +158,49 @@ export class OstiumMCP {
     }
   }
 
+  async getTokenAllowance(tokenAddress: Address): Promise<CallToolResult> {
+    try {
+      const { token, context } = getAuthContext("osiris");
+      if (!token || !context) {
+        throw new Error("No token or context found");
+      }
+
+      const wallet = this.walletToSession[context.sessionId];
+      if (!wallet) {
+        const error = new Error(
+          "No wallet found, you need to choose a wallet first with chooseWallet"
+        );
+        error.name = "NoWalletFoundError";
+        return createErrorResponse(error);
+      }
+
+      const client = new EVMWalletClient(
+        this.hubBaseUrl,
+        token.access_token,
+        context.deploymentId
+      );
+
+      const account = await client.getViemAccount(wallet, this.chain);
+
+      const tokenContract = getContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        client: this.publicClient,
+      });
+
+      const allowance = await tokenContract.read.allowance([
+        account.address,
+        STORAGE_CONTRACT_ADDRESS,
+      ]);
+
+      return createSuccessResponse("Successfully got token allowance", {
+        allowance: allowance,
+      });
+    } catch (error) {
+      throw new Error(`Failed to get token allowance: ${error}`);
+    }
+  }
+
   async approveToken(amount: bigint): Promise<CallToolResult> {
     const { token, context } = getAuthContext("osiris");
     if (!token || !context) {
@@ -794,6 +837,17 @@ export class OstiumMCP {
       },
       async ({ amount }) => {
         const allowance = await this.approveToken(BigInt(amount));
+        return allowance;
+      }
+    );
+    server.tool(
+      "getTokenAllowance",
+      "Get token allowance",
+      {
+        tokenAddress: z.string(),
+      },
+      async ({ tokenAddress }) => {
+        const allowance = await this.getTokenAllowance(tokenAddress as Address);
         return allowance;
       }
     );
