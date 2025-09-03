@@ -62,7 +62,7 @@ export function registerFetchBalancesTools(server: McpServer): void {
       },
       required: ["walletAddress"],
     },
-    async ({ walletAddress }: { walletAddress: string }): Promise<CallToolResult> => {
+    async ({ walletAddress }) => {
       try {
         if (!ethers.isAddress(walletAddress)) {
           return createErrorResponse(
