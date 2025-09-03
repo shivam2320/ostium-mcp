@@ -49,7 +49,7 @@ import { findPairIndex } from "./utils/pairs.js";
 import { getCurrentMidPrice } from "./utils/price-fetcher.js";
 
 export class OstiumMCP {
-  private hubBaseUrl: string;
+  public hubBaseUrl: string;
   publicClient: PublicClient;
   walletToSession: Record<string, string> = {};
   chain: string;
@@ -294,8 +294,18 @@ export class OstiumMCP {
       const hash = await walletClient.sendRawTransaction({
         serializedTransaction: signedTx as `0x${string}`,
       });
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Transaction failed with status: ${receipt.status}`);
+      }
+
       return createSuccessResponse("Successfully approved token", {
         hash: hash,
+        receipt: receipt,
       });
     } catch (error: any) {
       if (error.response && error.response.data && error.response.data.error) {
@@ -397,10 +407,6 @@ export class OstiumMCP {
         buy: _trade.buy ?? true,
       };
 
-      console.log("tradeArray", tradeArray);
-      console.log("type", _type);
-      console.log("slippage", _slippage);
-
       const preparedTx = await walletClient.prepareTransactionRequest({
         to: TRADING_CONTRACT_ADDRESS,
         abi: TRADING_ABI,
@@ -408,8 +414,6 @@ export class OstiumMCP {
         args: [tradeArray, _type, _slippage],
         gas: 800000n,
       });
-
-      console.log("preparedTx", preparedTx);
 
       const serializedTx = serializeTransaction({
         ...preparedTx,
@@ -430,11 +434,20 @@ export class OstiumMCP {
         serializedTransaction: signedTx as `0x${string}`,
       });
 
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Transaction failed with status: ${receipt.status}`);
+      }
+
       return createSuccessResponse("Successfully opened trade", {
         hash: hash,
         trade: _trade,
         type: _type,
         slippage: _slippage,
+        receipt: receipt,
       });
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -523,6 +536,15 @@ export class OstiumMCP {
       const hash = await walletClient.sendRawTransaction({
         serializedTransaction: signedTx as `0x${string}`,
       });
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Transaction failed with status: ${receipt.status}`);
+      }
+
       return createSuccessResponse("Successfully closed trade", {
         hash: hash,
         from: from,
@@ -530,6 +552,7 @@ export class OstiumMCP {
         pairIndex: pairIndex,
         index: _index,
         closePercentage: _closePercentage,
+        receipt: receipt,
       });
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -610,6 +633,15 @@ export class OstiumMCP {
       const hash = await walletClient.sendRawTransaction({
         serializedTransaction: signedTx as `0x${string}`,
       });
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Transaction failed with status: ${receipt.status}`);
+      }
+
       return createSuccessResponse("Successfully updated TP", {
         hash: hash,
         from: from,
@@ -617,6 +649,7 @@ export class OstiumMCP {
         pairIndex: pairIndex,
         index: _index,
         newTP: _newTP,
+        receipt: receipt,
       });
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -697,6 +730,15 @@ export class OstiumMCP {
       const hash = await walletClient.sendRawTransaction({
         serializedTransaction: signedTx as `0x${string}`,
       });
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Transaction failed with status: ${receipt.status}`);
+      }
+
       return createSuccessResponse("Successfully updated SL", {
         hash: hash,
         from: from,
@@ -704,6 +746,7 @@ export class OstiumMCP {
         pairIndex: pairIndex,
         index: _index,
         newSL: _newSL,
+        receipt: receipt,
       });
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -784,6 +827,15 @@ export class OstiumMCP {
       const hash = await walletClient.sendRawTransaction({
         serializedTransaction: signedTx as `0x${string}`,
       });
+
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: hash,
+      });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Transaction failed with status: ${receipt.status}`);
+      }
+
       return createSuccessResponse("Successfully modified trade", {
         hash: hash,
         from: from,
@@ -791,6 +843,7 @@ export class OstiumMCP {
         pairIndex: pairIndex,
         index: _index,
         amount: _amount,
+        receipt: receipt,
       });
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -810,7 +863,7 @@ export class OstiumMCP {
     registerModifyTradeTools(server, this);
     registerDataTools(server);
     registerFetchPricesTools(server);
-    registerFetchBalancesTools(server);
+    registerFetchBalancesTools(server, this);
     server.tool(
       "getUserAddresses",
       "Get user addresses, you can choose a wallet with chooseWallet",

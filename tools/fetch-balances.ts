@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ethers } from "ethers";
+import { getAuthContext } from "@osiris-ai/sdk";
+import { EVMWalletClient } from "@osiris-ai/web3-evm-sdk";
 import { McpLogger } from "../utils/logger.js";
 import {
   createErrorResponse,
@@ -9,6 +11,7 @@ import {
 } from "../utils/types.js";
 import { ERC20_ABI } from "../utils/ABIs/ERC20_ABI.js";
 import { USDC_CONTRACT_ADDRESS } from "../utils/constants.js";
+import { OstiumMCP } from "../client.js";
 
 const logger = new McpLogger("ostium-mcp", LOG_LEVELS.INFO);
 
@@ -18,20 +21,20 @@ async function fetchBalances(walletAddress: string): Promise<{
   walletAddress: string;
 }> {
   try {
-    const provider = new ethers.JsonRpcProvider("https://mainnet.arbitrum.io");
-    
+    const provider = new ethers.JsonRpcProvider("https://1rpc.io/arb");
+
     const ethBalanceWei = await provider.getBalance(walletAddress);
     const ethBalanceEth = ethers.formatEther(ethBalanceWei);
-    
+
     const usdcContract = new ethers.Contract(
       USDC_CONTRACT_ADDRESS,
       ERC20_ABI,
       provider
     );
-    
+
     const usdcBalanceRaw = await usdcContract.balanceOf(walletAddress);
     const usdcBalance = ethers.formatUnits(usdcBalanceRaw, 6);
-    
+
     return {
       ethBalance: ethBalanceEth,
       usdcBalance: usdcBalance,
@@ -46,34 +49,53 @@ async function fetchBalances(walletAddress: string): Promise<{
   }
 }
 
-export function registerFetchBalancesTools(server: McpServer): void {
+export function registerFetchBalancesTools(
+  server: McpServer,
+  ostiumMCP: OstiumMCP
+): void {
   logger.info("💰 Registering fetch balances tools...");
 
   server.tool(
     "fetch_wallet_balances",
-    "Retrieve ETH and USDC balances for a specified wallet address on Arbitrum network. Returns both native ETH balance and USDC token balance with proper decimal formatting.",
+    "Retrieve ETH and USDC balances for the current user's wallet address on Arbitrum network. Returns both native ETH balance and USDC token balance with proper decimal formatting.",
     {
       type: "object",
-      properties: {
-        walletAddress: {
-          type: "string",
-          description: "The wallet address to fetch balances for (must be a valid Ethereum address)",
-        },
-      },
-      required: ["walletAddress"],
+      properties: {},
+      required: [],
     },
-    async ({ walletAddress }) => {
+    async (): Promise<CallToolResult> => {
       try {
-        if (!ethers.isAddress(walletAddress)) {
+        const { token, context } = getAuthContext("osiris");
+        if (!token || !context) {
+          return createErrorResponse("No token or context found");
+        }
+
+        const wallet = ostiumMCP.walletToSession[context.sessionId];
+        if (!wallet) {
           return createErrorResponse(
-            "Invalid wallet address format. Please provide a valid Ethereum address."
+            "No wallet found, you need to choose a wallet first with chooseWallet"
           );
         }
+
+        const client = new EVMWalletClient(
+          ostiumMCP.hubBaseUrl,
+          token.access_token,
+          context.deploymentId
+        );
+
+        const account = await client.getViemAccount(wallet, ostiumMCP.chain);
+        if (!account) {
+          return createErrorResponse(
+            "No account found, you need to choose a wallet first with chooseWallet"
+          );
+        }
+
+        const walletAddress = account.address;
 
         logger.toolCalled("fetch_wallet_balances", { walletAddress });
 
         const balances = await fetchBalances(walletAddress);
-        
+
         const formattedBalances = {
           walletAddress: balances.walletAddress,
           balances: {
