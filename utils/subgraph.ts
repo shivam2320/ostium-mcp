@@ -1,7 +1,10 @@
 import { GraphQLClient } from 'graphql-request';
 import { gql } from 'graphql-request';
 import type { Pair, Trade, LimitOrder, Order, MetaData } from './types';
-import { SUBGRAPH_URL } from './constants';
+// import { SUBGRAPH_URL } from './constants';
+
+export const SUBGRAPH_URL =
+  "https://subgraph.satsuma-prod.com/391a61815d32/ostium/ost-prod/api";
 
 export const client = new GraphQLClient(SUBGRAPH_URL)
 
