@@ -4,7 +4,7 @@ import { PRECISION_18, PRECISION_6, PRECISION_2 } from './constants';
 export function normalize(value: string | null | undefined, decimals: number): number {
     if (!value) return 0;
     const precision = BigNumber.from(10).pow(decimals);
-    const divided = BigNumber.from(value).mul(1000).div(precision).toNumber() / 1000;
+    const divided = BigNumber.from(value).mul(1000).div(precision).div(1000).toNumber();
     return divided;
 }
 
