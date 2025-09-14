@@ -1,18 +1,20 @@
-import { GraphQLClient } from "graphql-request";
-import { gql } from "graphql-request";
-import type { Pair, Trade, LimitOrder, Order, MetaData } from "./types";
-import { SUBGRAPH_URL } from "./constants.js";
+import { GraphQLClient } from 'graphql-request';
+import { gql } from 'graphql-request';
+import type { Pair, Trade, LimitOrder, Order, MetaData } from './types';
+import { SUBGRAPH_URL } from './constants';
 
-export const client = new GraphQLClient(SUBGRAPH_URL);
+export const client = new GraphQLClient(SUBGRAPH_URL)
 
 export const getPairs = async (): Promise<Pair[]> => {
-  console.log("Fetching available pairs");
-  const query = gql`
+    console.log("Fetching available pairs");
+    const query = gql`
     query getPairs {
       pairs(first: 1000) {
         id
         from
         to
+        volume
+        lastTradePrice
         feed
         overnightMaxLeverage
         longOI
@@ -20,28 +22,11 @@ export const getPairs = async (): Promise<Pair[]> => {
         maxOI
         makerFeeP
         takerFeeP
-        makerMaxLeverage
         curFundingLong
         curFundingShort
-        curRollover
         totalOpenTrades
         totalOpenLimitOrders
-        accRollover
-        lastRolloverBlock
-        rolloverFeePerBlock
-        accFundingLong
-        accFundingShort
-        lastFundingBlock
-        maxFundingFeePerBlock
         lastFundingRate
-        hillInflectionPoint
-        hillPosScale
-        hillNegScale
-        springFactor
-        sFactorUpScaleP
-        sFactorDownScaleP
-        lastTradePrice
-        maxLeverage
         group {
           id
           name
@@ -57,13 +42,15 @@ export const getPairs = async (): Promise<Pair[]> => {
       }
     }
   `;
-  const result = await client.request<{ pairs: Pair[] }>(query);
-  return result.pairs;
+    const result = await client.request<{ pairs: Pair[] }>(query);
+    return result.pairs;
 };
 
 // Get pair details
-export const getPairDetails = async (pairId: string): Promise<Pair> => {
-  const query = gql`
+export const getPairDetails = async (
+    pairId: string
+): Promise<Pair> => {
+    const query = gql`
     query getPairDetails($pair_id: ID!) {
       pair(id: $pair_id) {
         id
@@ -112,32 +99,30 @@ export const getPairDetails = async (pairId: string): Promise<Pair> => {
       }
     }
   `;
-  const result = await client.request<{ pair: Pair }>(query, {
-    pair_id: pairId,
-  });
-  return result.pair;
+    const result = await client.request<{ pair: Pair }>(query, { pair_id: pairId });
+    return result.pair;
 };
 
 // Get liquidation margin threshold
-export const getLiqMarginThresholdP = async (
-  client: GraphQLClient
-): Promise<string> => {
-  const query = gql`
+export const getLiqMarginThresholdP = async (client: GraphQLClient): Promise<string> => {
+    const query = gql`
     query metaDatas {
       metaDatas {
         liqMarginThresholdP
       }
     }
   `;
-  const result = await client.request<{ metaDatas: MetaData[] }>(query);
-  const value = result.metaDatas[0].liqMarginThresholdP;
-  console.log(`Fetched get_liq_margin_threshold_p: ${value}%`);
-  return value;
+    const result = await client.request<{ metaDatas: MetaData[] }>(query);
+    const value = result.metaDatas[0].liqMarginThresholdP;
+    console.log(`Fetched get_liq_margin_threshold_p: ${value}%`);
+    return value;
 };
 
 // Get open trades
-export const getOpenTrades = async (address: string): Promise<Trade[]> => {
-  const query = gql`
+export const getOpenTrades = async (
+    address: string
+): Promise<Trade[]> => {
+    const query = gql`
     query trades($trader: Bytes!) {
       trades(where: { isOpen: true, trader: $trader }) {
         tradeID
@@ -185,15 +170,15 @@ export const getOpenTrades = async (address: string): Promise<Trade[]> => {
       }
     }
   `;
-  const result = await client.request<{ trades: Trade[] }>(query, {
-    trader: address,
-  });
-  return result.trades;
+    const result = await client.request<{ trades: Trade[] }>(query, { trader: address });
+    return result.trades;
 };
 
 // Get limit orders
-export const getLimitOrders = async (trader: string): Promise<LimitOrder[]> => {
-  const query = gql`
+export const getLimitOrders = async (
+    trader: string
+): Promise<LimitOrder[]> => {
+    const query = gql`
     query GetLimitOrders($trader: Bytes!) {
       limits(
         where: { trader: $trader, isActive: true }
@@ -231,18 +216,16 @@ export const getLimitOrders = async (trader: string): Promise<LimitOrder[]> => {
       }
     }
   `;
-  const result = await client.request<{ limits: LimitOrder[] }>(query, {
-    trader,
-  });
-  return result.limits;
+    const result = await client.request<{ limits: LimitOrder[] }>(query, { trader });
+    return result.limits;
 };
 
 // Get recent order history
 export const getRecentHistory = async (
-  trader: string,
-  lastNOrders = 10
+    trader: string,
+    lastNOrders = 10
 ): Promise<Order[]> => {
-  const query = gql`
+    const query = gql`
     query ListOrdersHistory($trader: Bytes, $last_n_orders: Int) {
       orders(
         where: { trader: $trader, isPending: false }
@@ -297,67 +280,69 @@ export const getRecentHistory = async (
       }
     }
   `;
-  const result = await client.request<{ orders: Order[] }>(query, {
-    trader,
-    last_n_orders: lastNOrders,
-  });
-  return result.orders.reverse();
+    const result = await client.request<{ orders: Order[] }>(query, {
+        trader,
+        last_n_orders: lastNOrders,
+    });
+    return result.orders.reverse();
 };
 
 // Get orders
 export const getOrders = async (): Promise<Order[]> => {
-  const query = gql`
-    query GetOrders {
-      orders(first: 1000) {
-        id
-        trader
-        pair {
+    const query = gql`
+      query GetOrders {
+        orders(first: 1000) {
           id
-          from
-          to
-          feed
+          trader
+          pair {
+            id
+            from
+            to
+            feed
+          }
+          tradeID
+          limitID
+          orderType
+          orderAction
+          price
+          priceAfterImpact
+          priceImpactP
+          collateral
+          notional
+          tradeNotional
+          profitPercent
+          totalProfitPercent
+          amountSentToTrader
+          isBuy
+          initiatedAt
+          executedAt
+          initiatedTx
+          executedTx
+          initiatedBlock
+          executedBlock
+          leverage
+          isPending
+          isCancelled
+          cancelReason
+          devFee
+          vaultFee
+          oracleFee
+          liquidationFee
+          fundingFee
+          rolloverFee
+          closePercent
         }
-        tradeID
-        limitID
-        orderType
-        orderAction
-        price
-        priceAfterImpact
-        priceImpactP
-        collateral
-        notional
-        tradeNotional
-        profitPercent
-        totalProfitPercent
-        amountSentToTrader
-        isBuy
-        initiatedAt
-        executedAt
-        initiatedTx
-        executedTx
-        initiatedBlock
-        executedBlock
-        leverage
-        isPending
-        isCancelled
-        cancelReason
-        devFee
-        vaultFee
-        oracleFee
-        liquidationFee
-        fundingFee
-        rolloverFee
-        closePercent
       }
-    }
-  `;
-  const result = await client.request<{ orders: Order[] }>(query);
-  return result.orders;
+    `;
+    const result = await client.request<{ orders: Order[] }>(query);
+    return  result.orders;
 };
 
 // Get order by ID
-export const getOrderById = async (orderId: string): Promise<Order | null> => {
-  const query = gql`
+export const getOrderById = async (
+    orderId: string
+): Promise<Order | null> => {
+    const query = gql`
     query GetOrder($order_id: ID!) {
       orders(where: { id: $order_id }) {
         id
@@ -402,15 +387,15 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       }
     }
   `;
-  const result = await client.request<{ orders: Order[] }>(query, {
-    order_id: orderId,
-  });
-  return result.orders.length > 0 ? result.orders[0] : null;
+    const result = await client.request<{ orders: Order[] }>(query, { order_id: orderId });
+    return result.orders.length > 0 ? result.orders[0] : null;
 };
 
 // Get trade by ID
-export const getTradeById = async (tradeId: string): Promise<Trade | null> => {
-  const query = gql`
+export const getTradeById = async (
+    tradeId: string
+): Promise<Trade | null> => {
+    const query = gql`
     query GetTrade($trade_id: ID!) {
       trades(where: { id: $trade_id }) {
         id
@@ -442,8 +427,6 @@ export const getTradeById = async (tradeId: string): Promise<Trade | null> => {
       }
     }
   `;
-  const result = await client.request<{ trades: Trade[] }>(query, {
-    trade_id: tradeId,
-  });
-  return result.trades.length > 0 ? result.trades[0] : null;
+    const result = await client.request<{ trades: Trade[] }>(query, { trade_id: tradeId });
+    return result.trades.length > 0 ? result.trades[0] : null;
 };
