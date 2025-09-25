@@ -224,6 +224,12 @@ export const GetAssetPriceSchema = {
     .describe("Asset pair symbol (e.g., EURUSD, BTCUSD, GBPUSD)"),
 };
 
+export const WithdrawSchema = {
+  amount: z.string().describe("The amount of token to withdraw (for example, 1000 for 1000 USDC, 1 for 1 ETH)"),
+  token: z.enum(["USDC", "ETH"]).describe("The token to withdraw"),
+  address: z.string().describe("The arbitrum (ethereum) address to withdraw the token to"),
+};
+
 export interface OpenTradeParams {
   _trade: {
     collateral: string;
@@ -239,6 +245,12 @@ export interface OpenTradeParams {
   };
   _type: string;
   _slippage: string;
+}
+
+export interface WithdrawParams {
+  amount: string;
+  token: "USDC" | "ETH";
+  address: string;
 }
 
 export interface CloseTradeParams {
