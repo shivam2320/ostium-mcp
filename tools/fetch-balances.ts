@@ -119,8 +119,73 @@ export function registerFetchBalancesTools(
           `✅ Retrieved balances for wallet ${walletAddress}`,
           formattedBalances
         );
-      } catch (error) {
-        return handleToolError("fetch_wallet_balances", error);
+      } catch (error: any) {
+        try {
+          await ostiumMCP.refreshTokensForTools();
+          // Retry the function after token refresh
+          return await (async (): Promise<CallToolResult> => {
+            try {
+              const { token, context } = getAuthContext("osiris");
+              if (!token || !context) {
+                return createErrorResponse("No token or context found");
+              }
+
+              const wallet = ostiumMCP.walletToSession[context.sessionId];
+              if (!wallet) {
+                return createErrorResponse(
+                  "No wallet found, you need to choose a wallet first with chooseWallet"
+                );
+              }
+
+              const client = new EVMWalletClient(
+                ostiumMCP.hubBaseUrl,
+                token.access_token,
+                context.deploymentId
+              );
+
+              const account = await client.getViemAccount(wallet, ostiumMCP.chain);
+              if (!account) {
+                return createErrorResponse(
+                  "No account found, you need to choose a wallet first with chooseWallet"
+                );
+              }
+
+              const walletAddress = account.address;
+
+              logger.toolCalled("fetch_wallet_balances", { walletAddress });
+
+              const balances = await fetchBalances(walletAddress);
+
+              const formattedBalances = {
+                walletAddress: balances.walletAddress,
+                balances: {
+                  ETH: {
+                    balance: parseFloat(balances.ethBalance).toFixed(6),
+                    unit: "ETH",
+                    network: "Arbitrum",
+                  },
+                  USDC: {
+                    balance: parseFloat(balances.usdcBalance).toFixed(6),
+                    unit: "USDC",
+                    network: "Arbitrum",
+                    contractAddress: USDC_CONTRACT_ADDRESS,
+                  },
+                },
+                lastUpdated: new Date().toISOString(),
+              };
+
+              logger.toolCompleted("fetch_wallet_balances");
+              return createSuccessResponse(
+                `✅ Retrieved balances for wallet ${walletAddress}`,
+                formattedBalances
+              );
+            } catch (error: any) {
+              return createErrorResponse("Failed to fetch wallet balances after token refresh, reauthenticate with this MCP");
+            }
+          })();
+        } catch (refreshError: any) {
+          return handleToolError("fetch_wallet_balances", refreshError);
+        }
       }
     }
   );

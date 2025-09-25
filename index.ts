@@ -1,4 +1,4 @@
-import { createMcpServer } from "@osiris-ai/sdk";
+import { AuthManager, createMcpServer } from "@osiris-ai/sdk";
 import { PostgresDatabaseAdapter } from "@osiris-ai/postgres-sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { config as dotenv } from "dotenv";
@@ -9,8 +9,6 @@ async function start(): Promise<void> {
   const clientId = process.env.OAUTH_CLIENT_ID || "";
   const clientSecret = process.env.OAUTH_CLIENT_SECRET || "";
   const port = parseInt(process.env.PORT || "3000", 10);
-
-  const ostiumMCP = new OstiumMCP(hub);
 
   await createMcpServer({
     name: "ostium-mcp",
@@ -44,7 +42,13 @@ async function start(): Promise<void> {
         ],
       },
     },
-    configure: (s: McpServer) => ostiumMCP.configureServer(s),
+    configure: (s: McpServer, a?: AuthManager) => {
+		if (!a) {
+			throw new Error("Auth manager is required");
+		}
+		const ostiumMCP = new OstiumMCP(hub, a);
+		ostiumMCP.configureServer(s)
+	},
   });
 
   console.log("🚀 ostium-mcp running on port", port);

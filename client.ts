@@ -15,7 +15,7 @@ import {
 	erc20Abi,
 } from "viem";
 import { arbitrum } from "viem/chains";
-import { getAuthContext } from "@osiris-ai/sdk";
+import { getAuthContext, AuthManager } from "@osiris-ai/sdk";
 import { EVMWalletClient } from "@osiris-ai/web3-evm-sdk";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
@@ -56,19 +56,65 @@ export class OstiumMCP {
 	publicClient: PublicClient;
 	walletToSession: Record<string, string> = {};
 	chain: string;
+	authManager: AuthManager;
 
-	constructor(hubBaseUrl: string) {
+	constructor(hubBaseUrl: string, a: AuthManager) {
 		this.hubBaseUrl = hubBaseUrl;
 		this.publicClient = createPublicClient({
 			chain: arbitrum,
 			transport: http(),
 		});
 		this.chain = "evm:eip155:42161";
+		this.authManager = a;
 	}
 
-	async getUserAddresses(): Promise<CallToolResult> {
+	/**
+	 * Helper function to refresh tokens and update both database and AsyncLocalStorage context
+	 */
+	private async refreshTokensAndUpdateContext(token: any, context: any): Promise<any> {
+		const refreshToken = token?.refresh_token;
+		if (!refreshToken) {
+			throw new Error("No refresh token available");
+		}
+
+		const newToken = await this.authManager.refreshToken('osiris', refreshToken);
+		if (!newToken) {
+			throw new Error("Failed to refresh token");
+		}
+
+		// Update database
+		await this.authManager.updateAuthentication(context.deploymentId, 'osiris', {
+			token: {
+				...token,
+				access_token: newToken.access_token,
+				refresh_token: newToken.refresh_token,
+				expires_in: newToken.expires_in,
+			},
+		});
+
+		// Update AsyncLocalStorage context
+		const updatedToken = {
+			...token,
+			access_token: newToken.access_token,
+			refresh_token: newToken.refresh_token,
+			expires_in: newToken.expires_in,
+		};
+		context.tokens.set('osiris', updatedToken);
+
+		return updatedToken;
+	}
+
+	/**
+	 * Public method for tools to refresh tokens
+	 */
+	async refreshTokensForTools(): Promise<void> {
+		const { token, context } = getAuthContext("osiris");
+		await this.refreshTokensAndUpdateContext(token, context);
+	}
+
+	async getUserAddresses(retry = false): Promise<CallToolResult> {
+		const { token, context } = getAuthContext("osiris");
 		try {
-			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
 				throw new Error("No token or context found");
 			}
@@ -93,15 +139,23 @@ export class OstiumMCP {
 				addresses,
 			});
 		} catch (error: any) {
-			const errorMessage = error.message || "Failed to get user addresses";
-			return createErrorResponse(errorMessage);
+			if (retry) {
+				throw new Error("Failed to get signature from Action API, and failed to refresh token, reauthenticate with this MCP");
+			}
+			try {
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.getUserAddresses(true);
+			} catch (refreshError: any) {
+				const errorMessage = refreshError.message || "Failed to get user addresses, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
 	/**
 	 * Choose wallet for current session
 	 */
-	async chooseWallet(address: string): Promise<CallToolResult> {
+	async chooseWallet(address: string, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -130,8 +184,17 @@ export class OstiumMCP {
 				walletRecordId: walletRecord.id,
 			});
 		} catch (error: any) {
-			const errorMessage = error.message || "Failed to choose wallet";
-			return createErrorResponse(errorMessage);
+			if (retry) {
+				throw new Error("Failed to choose wallet, and failed to refresh token, reauthenticate with this MCP");
+			}
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.chooseWallet(address, true);
+			} catch (refreshError: any) {
+				const errorMessage = refreshError.message || "Failed to choose wallet, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
@@ -162,7 +225,7 @@ export class OstiumMCP {
 		}
 	}
 
-	async getTokenAllowance(tokenAddress: Address): Promise<CallToolResult> {
+	async getTokenAllowance(tokenAddress: Address, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -200,42 +263,51 @@ export class OstiumMCP {
 			return createSuccessResponse("Successfully got token allowance", {
 				allowance: allowance,
 			});
-		} catch (error) {
-			throw new Error(`Failed to get token allowance: ${error}`);
+		} catch (error: any) {
+			if (retry) {
+				throw new Error("Failed to get token allowance, and failed to refresh token, reauthenticate with this MCP");
+			}
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.getTokenAllowance(tokenAddress, true);
+			} catch (refreshError: any) {
+				const errorMessage = refreshError.message || "Failed to get token allowance, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async approveToken(amount: bigint): Promise<CallToolResult> {
-		const { token, context } = getAuthContext("osiris");
-		if (!token || !context) {
-			throw new Error("No token or context found");
-		}
-
-		const wallet = this.walletToSession[context.sessionId];
-		if (!wallet) {
-			const error = new Error(
-				"No wallet found, you need to choose a wallet first with chooseWallet"
-			);
-			error.name = "NoWalletFoundError";
-			return createErrorResponse(error);
-		}
-		const client = new EVMWalletClient(
-			this.hubBaseUrl,
-			token.access_token,
-			context.deploymentId
-		);
-
-		const account = await client.getViemAccount(wallet, this.chain);
-
-		if (!account) {
-			const error = new Error(
-				"No account found, you need to choose a wallet first with chooseWallet"
-			);
-			error.name = "NoAccountFoundError";
-			return createErrorResponse(error);
-		}
-
+	async approveToken(amount: bigint, retry = false): Promise<CallToolResult> {
 		try {
+			const { token, context } = getAuthContext("osiris");
+			if (!token || !context) {
+				throw new Error("No token or context found");
+			}
+
+			const wallet = this.walletToSession[context.sessionId];
+			if (!wallet) {
+				const error = new Error(
+					"No wallet found, you need to choose a wallet first with chooseWallet"
+				);
+				error.name = "NoWalletFoundError";
+				return createErrorResponse(error);
+			}
+			const client = new EVMWalletClient(
+				this.hubBaseUrl,
+				token.access_token,
+				context.deploymentId
+			);
+
+			const account = await client.getViemAccount(wallet, this.chain);
+
+			if (!account) {
+				const error = new Error(
+					"No account found, you need to choose a wallet first with chooseWallet"
+				);
+				error.name = "NoAccountFoundError";
+				return createErrorResponse(error);
+			}
 			const walletClient = createWalletClient({
 				account: account,
 				chain: arbitrum,
@@ -311,15 +383,24 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response && error.response.data && error.response.data.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to approve token, and failed to refresh token, reauthenticate with this MCP");
 			}
-			const errorMessage = error.message || "Failed to approve token";
-			return createErrorResponse(errorMessage);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.approveToken(amount, true);
+			} catch (refreshError: any) {
+				if (error.response && error.response.data && error.response.data.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to approve token, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async openTrade(params: OpenTradeParams): Promise<CallToolResult> {
+	async openTrade(params: OpenTradeParams, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -450,14 +531,24 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response?.data?.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to open trade, and failed to refresh token, reauthenticate with this MCP");
 			}
-			return createErrorResponse(error);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.openTrade(params, true);
+			} catch (refreshError: any) {
+				if (error.response?.data?.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to open trade, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async withdraw(params: WithdrawParams): Promise<CallToolResult> {
+	async withdraw(params: WithdrawParams, retry = false): Promise<CallToolResult> {
 
 		try {
 			const { token, context } = getAuthContext("osiris");
@@ -548,14 +639,24 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response?.data?.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to withdraw token, and failed to refresh token, reauthenticate with this MCP");
 			}
-			return createErrorResponse(error);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.withdraw(params, true);
+			} catch (refreshError: any) {
+				if (error.response?.data?.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to withdraw token, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async closeTrade(params: CloseTradeParams): Promise<CallToolResult> {
+	async closeTrade(params: CloseTradeParams, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -652,14 +753,24 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response?.data?.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to close trade, and failed to refresh token, reauthenticate with this MCP");
 			}
-			return createErrorResponse(error);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.closeTrade(params, true);
+			} catch (refreshError: any) {
+				if (error.response?.data?.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to close trade, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async updateTp(params: UpdateTpParams): Promise<CallToolResult> {
+	async updateTp(params: UpdateTpParams, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -748,14 +859,24 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response?.data?.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to update TP, and failed to refresh token, reauthenticate with this MCP");
 			}
-			return createErrorResponse(error);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.updateTp(params, true);
+			} catch (refreshError: any) {
+				if (error.response?.data?.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to update TP, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async updateSl(params: UpdateSlParams): Promise<CallToolResult> {
+	async updateSl(params: UpdateSlParams, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -844,14 +965,24 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response?.data?.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to update SL, and failed to refresh token, reauthenticate with this MCP");
 			}
-			return createErrorResponse(error);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.updateSl(params, true);
+			} catch (refreshError: any) {
+				if (error.response?.data?.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to update SL, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
-	async modifyTrade(params: ModifyTradeParams): Promise<CallToolResult> {
+	async modifyTrade(params: ModifyTradeParams, retry = false): Promise<CallToolResult> {
 		try {
 			const { token, context } = getAuthContext("osiris");
 			if (!token || !context) {
@@ -940,10 +1071,20 @@ export class OstiumMCP {
 				receipt: receipt,
 			});
 		} catch (error: any) {
-			if (error.response?.data?.error) {
-				return createErrorResponse(error.response.data.error);
+			if (retry) {
+				throw new Error("Failed to modify trade, and failed to refresh token, reauthenticate with this MCP");
 			}
-			return createErrorResponse(error);
+			try {
+				const { token, context } = getAuthContext("osiris");
+				await this.refreshTokensAndUpdateContext(token, context);
+				return await this.modifyTrade(params, true);
+			} catch (refreshError: any) {
+				if (error.response?.data?.error) {
+					return createErrorResponse(error.response.data.error);
+				}
+				const errorMessage = refreshError.message || "Failed to modify trade, and failed to refresh token, reauthenticate with this MCP";
+				return createErrorResponse(new Error(errorMessage));
+			}
 		}
 	}
 
